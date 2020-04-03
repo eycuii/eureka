@@ -805,12 +805,15 @@ public class DiscoveryClient implements EurekaClient {
     }
 
     /**
+     * 服务注册
+     *
      * Register with the eureka service by making the appropriate REST call.
      */
     boolean register() throws Throwable {
         logger.info(PREFIX + appPathIdentifier + ": registering service...");
         EurekaHttpResponse<Void> httpResponse;
         try {
+            // 通过http请求调用eureka server提供的接口
             httpResponse = eurekaTransport.registrationClient.register(instanceInfo);
         } catch (Exception e) {
             logger.warn("{} - registration failed {}", PREFIX + appPathIdentifier, e.getMessage(), e);
@@ -1311,6 +1314,7 @@ public class DiscoveryClient implements EurekaClient {
                 applicationInfoManager.registerStatusChangeListener(statusChangeListener);
             }
 
+            // 这里才是服务注册入口
             instanceInfoReplicator.start(clientConfig.getInitialInstanceInfoReplicationIntervalSeconds());
         } else {
             logger.info("Not registering with Eureka server per configuration");
