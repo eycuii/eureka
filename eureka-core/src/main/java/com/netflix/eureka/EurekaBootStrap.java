@@ -82,7 +82,7 @@ public class EurekaBootStrap implements ServletContextListener {
 
     protected volatile EurekaServerContext serverContext;
     protected volatile AwsBinder awsBinder;
-    
+
     private EurekaClient eurekaClient;
 
     /**
@@ -91,10 +91,10 @@ public class EurekaBootStrap implements ServletContextListener {
     public EurekaBootStrap() {
         this(null);
     }
-    
+
     /**
      * Construct an instance of eureka bootstrap with the supplied eureka client
-     * 
+     *
      * @param eurekaClient the eureka client to bootstrap
      */
     public EurekaBootStrap(EurekaClient eurekaClient) {
@@ -102,6 +102,8 @@ public class EurekaBootStrap implements ServletContextListener {
     }
 
     /**
+     * 启动eureka server
+     *
      * Initializes Eureka, including syncing up with other Eureka peers and publishing the registry.
      *
      * @see
@@ -110,7 +112,9 @@ public class EurekaBootStrap implements ServletContextListener {
     @Override
     public void contextInitialized(ServletContextEvent event) {
         try {
+            // 初始化环境
             initEurekaEnvironment();
+            // 构建EurekaServerContext（eureka server的上下文）
             initEurekaServerContext();
 
             ServletContext sc = event.getServletContext();
@@ -145,6 +149,7 @@ public class EurekaBootStrap implements ServletContextListener {
      * init hook for server context. Override for custom logic.
      */
     protected void initEurekaServerContext() throws Exception {
+        // 读取eureka-server.properties配置文件
         EurekaServerConfig eurekaServerConfig = new DefaultEurekaServerConfig();
 
         // For backward compatibility
@@ -161,11 +166,15 @@ public class EurekaBootStrap implements ServletContextListener {
             EurekaInstanceConfig instanceConfig = isCloud(ConfigurationManager.getDeploymentContext())
                     ? new CloudInstanceConfig()
                     : new MyDataCenterInstanceConfig();
-            
+
+            // 把自己作为服务实例，从eureka-client.properties中读取服务实例的配置，
+            // 构造了服务信息实例InstanceInfo，构造了服务实例信息管理器ApplicationInfoManager
             applicationInfoManager = new ApplicationInfoManager(
                     instanceConfig, new EurekaConfigBasedInstanceInfoProvider(instanceConfig).get());
-            
+
+            // 把自己作为eureka client，从eureka-client.properties中读取eureka client配置
             EurekaClientConfig eurekaClientConfig = new DefaultEurekaClientConfig();
+            // 基于服务实例和eureka client配置构造一个EurekaClient
             eurekaClient = new DiscoveryClient(applicationInfoManager, eurekaClientConfig);
         } else {
             applicationInfoManager = eurekaClient.getApplicationInfoManager();
@@ -182,6 +191,7 @@ public class EurekaBootStrap implements ServletContextListener {
             awsBinder = new AwsBinderDelegate(eurekaServerConfig, eurekaClient.getEurekaClientConfig(), registry, applicationInfoManager);
             awsBinder.start();
         } else {
+            // 构造一个能感知eureka server集群的注册表
             registry = new PeerAwareInstanceRegistryImpl(
                     eurekaServerConfig,
                     eurekaClient.getEurekaClientConfig(),
@@ -190,6 +200,7 @@ public class EurekaBootStrap implements ServletContextListener {
             );
         }
 
+        // 构造一个eureka server集群的信息
         PeerEurekaNodes peerEurekaNodes = getPeerEurekaNodes(
                 registry,
                 eurekaServerConfig,
@@ -208,17 +219,22 @@ public class EurekaBootStrap implements ServletContextListener {
 
         EurekaServerContextHolder.initialize(serverContext);
 
+        // EurekaServerContext初始化
+        // 1）更新eureka server集群信息
+        // 2）基于eureka server集群信息初始化注册表
         serverContext.initialize();
         logger.info("Initialized server context");
 
+        // 从相邻的eureka server节点拷贝注册表
         // Copy registry from neighboring eureka node
         int registryCount = registry.syncUp();
         registry.openForTraffic(applicationInfoManager, registryCount);
 
+        // 注册监控
         // Register all monitoring statistics.
         EurekaMonitors.registerAllStats();
     }
-    
+
     protected PeerEurekaNodes getPeerEurekaNodes(PeerAwareInstanceRegistry registry, EurekaServerConfig eurekaServerConfig, EurekaClientConfig eurekaClientConfig, ServerCodecs serverCodecs, ApplicationInfoManager applicationInfoManager) {
         PeerEurekaNodes peerEurekaNodes = new PeerEurekaNodes(
                 registry,
@@ -227,7 +243,7 @@ public class EurekaBootStrap implements ServletContextListener {
                 serverCodecs,
                 applicationInfoManager
         );
-        
+
         return peerEurekaNodes;
     }
 
