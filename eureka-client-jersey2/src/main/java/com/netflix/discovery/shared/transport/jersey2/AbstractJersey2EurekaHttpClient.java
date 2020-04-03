@@ -208,6 +208,9 @@ public abstract class AbstractJersey2EurekaHttpClient implements EurekaHttpClien
         }
     }
 
+    /**
+     * 抓取全量注册表
+     */
     @Override
     public EurekaHttpResponse<Applications> getApplications(String... regions) {
         return getApplicationsInternal("apps/", regions);
@@ -256,6 +259,7 @@ public abstract class AbstractJersey2EurekaHttpClient implements EurekaHttpClien
     private EurekaHttpResponse<Applications> getApplicationsInternal(String urlPath, String[] regions) {
         Response response = null;
         try {
+            // 发送http://localhost:8080/v2/apps GET请求
             WebTarget webTarget = jerseyClient.target(serviceUrl).path(urlPath);
             if (regions != null && regions.length > 0) {
                 webTarget = webTarget.queryParam("regions", StringUtil.join(regions));
@@ -267,6 +271,7 @@ public abstract class AbstractJersey2EurekaHttpClient implements EurekaHttpClien
 
             Applications applications = null;
             if (response.getStatus() == Status.OK.getStatusCode() && response.hasEntity()) {
+                // 从eureka server的getApplications restful接口，获取全量注册表，缓存到自己的本地
                 applications = response.readEntity(Applications.class);
             }
             return anEurekaHttpResponse(response.getStatus(), applications).headers(headersOf(response)).build();

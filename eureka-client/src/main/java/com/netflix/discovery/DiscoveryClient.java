@@ -413,7 +413,7 @@ public class DiscoveryClient implements EurekaClient {
             throw new RuntimeException("Failed to initialize DiscoveryClient!", e);
         }
 
-        // 如果配置了要抓取注册表信息，那么会在启动时就来一次全量的注册表抓取过程
+        // 如果配置了要抓取注册表信息，那么会在启动时就会进行一次全量的注册表抓取过程
         if (clientConfig.shouldFetchRegistry() && !fetchRegistry(false)) {
             fetchRegistryFromBackup();
         }
@@ -915,6 +915,8 @@ public class DiscoveryClient implements EurekaClient {
     }
 
     /**
+     * 抓取注册表
+     *
      * Fetches the registry information.
      *
      * <p>
@@ -930,6 +932,7 @@ public class DiscoveryClient implements EurekaClient {
         Stopwatch tracer = FETCH_REGISTRY_TIMER.start();
 
         try {
+            // 先获取本地的Applications缓存。Application就是服务，里面有他自己的所有InstanceInfo服务实例信息。
             // If the delta is disabled or if it is the first time, get all
             // applications
             Applications applications = getApplications();
@@ -948,6 +951,7 @@ public class DiscoveryClient implements EurekaClient {
                 logger.info("Registered Applications size is zero : {}",
                         (applications.getRegisteredApplications().size() == 0));
                 logger.info("Application version is -1: {}", (applications.getVersion() == -1));
+                // 抓取全量注册表
                 getAndStoreFullRegistry();
             } else {
                 getAndUpdateDelta(applications);
@@ -1016,6 +1020,8 @@ public class DiscoveryClient implements EurekaClient {
     }
 
     /**
+     * 抓取全量注册表
+     *
      * Gets the full registry information from the eureka server and stores it locally.
      * When applying the full registry, the following flow is observed:
      *
@@ -1033,10 +1039,12 @@ public class DiscoveryClient implements EurekaClient {
         logger.info("Getting all instance registry info from the eureka server");
 
         Applications apps = null;
+        // 用jersey client发送http请求，获取全量注册表
         EurekaHttpResponse<Applications> httpResponse = clientConfig.getRegistryRefreshSingleVipAddress() == null
                 ? eurekaTransport.queryClient.getApplications(remoteRegionsRef.get())
                 : eurekaTransport.queryClient.getVip(clientConfig.getRegistryRefreshSingleVipAddress(), remoteRegionsRef.get());
         if (httpResponse.getStatusCode() == Status.OK.getStatusCode()) {
+            // 放到本地缓存
             apps = httpResponse.getEntity();
         }
         logger.info("The response status is {}", httpResponse.getStatusCode());
