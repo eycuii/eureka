@@ -77,6 +77,8 @@ public class ApplicationsResource {
     }
 
     /**
+     * 接收eureka client的注册实例的请求
+     *
      * Gets information about a particular {@link com.netflix.discovery.shared.Application}.
      *
      * @param version
@@ -91,6 +93,7 @@ public class ApplicationsResource {
             @PathParam("version") String version,
             @PathParam("appId") String appId) {
         CurrentRequestVersion.set(Version.toEnum(version));
+        // 让ApplicationResource处理请求
         return new ApplicationResource(appId, serverConfig, registry);
     }
 

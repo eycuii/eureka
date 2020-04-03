@@ -130,6 +130,8 @@ public class ApplicationResource {
     }
 
     /**
+     * 处理eureka client注册服务实例的请求
+     *
      * Registers information about a particular instance for an
      * {@link com.netflix.discovery.shared.Application}.
      *
@@ -182,6 +184,7 @@ public class ApplicationResource {
             }
         }
 
+        // 注册
         registry.register(info, "true".equals(isReplication));
         return Response.status(204).build();  // 204 to be backwards compatible
     }
