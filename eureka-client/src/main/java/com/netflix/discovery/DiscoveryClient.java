@@ -295,6 +295,9 @@ public class DiscoveryClient implements EurekaClient {
         });
     }
 
+    /**
+     * eureka client的启动
+     */
     @Inject
     DiscoveryClient(ApplicationInfoManager applicationInfoManager, EurekaClientConfig config, AbstractDiscoveryClientOptionalArgs args,
                     Provider<BackupRegistry> backupRegistryProvider) {
@@ -392,6 +395,7 @@ public class DiscoveryClient implements EurekaClient {
                             .build()
             );  // use direct handoff
 
+            // 网络通信组件
             eurekaTransport = new EurekaTransport();
             scheduleServerEndpointTask(eurekaTransport, args);
 
@@ -409,6 +413,7 @@ public class DiscoveryClient implements EurekaClient {
             throw new RuntimeException("Failed to initialize DiscoveryClient!", e);
         }
 
+        // 如果配置了要抓取注册表信息，那么会在启动时就来一次全量的注册表抓取过程
         if (clientConfig.shouldFetchRegistry() && !fetchRegistry(false)) {
             fetchRegistryFromBackup();
         }
@@ -417,9 +422,11 @@ public class DiscoveryClient implements EurekaClient {
         if (this.preRegistrationHandler != null) {
             this.preRegistrationHandler.beforeRegistration();
         }
+        // 启动调度任务
         initScheduledTasks();
 
         try {
+            // 将自己注册了一个监控
             Monitors.registerObject(this);
         } catch (Throwable e) {
             logger.warn("Cannot register timers", e);
@@ -1236,6 +1243,7 @@ public class DiscoveryClient implements EurekaClient {
      */
     private void initScheduledTasks() {
         if (clientConfig.shouldFetchRegistry()) {
+            // 抓取注册表的调度任务
             // registry cache refresh timer
             int registryFetchIntervalSeconds = clientConfig.getRegistryFetchIntervalSeconds();
             int expBackOffBound = clientConfig.getCacheRefreshExecutorExponentialBackOffBound();
@@ -1257,6 +1265,7 @@ public class DiscoveryClient implements EurekaClient {
             int expBackOffBound = clientConfig.getHeartbeatExecutorExponentialBackOffBound();
             logger.info("Starting heartbeat executor: " + "renew interval is: " + renewalIntervalInSecs);
 
+            // 给eureka server定时发送心跳的调度任务
             // Heartbeat timer
             scheduler.schedule(
                     new TimedSupervisorTask(
@@ -1270,6 +1279,7 @@ public class DiscoveryClient implements EurekaClient {
                     ),
                     renewalIntervalInSecs, TimeUnit.SECONDS);
 
+            // 进行服务实例信息复制的调度任务
             // InstanceInfo replicator
             instanceInfoReplicator = new InstanceInfoReplicator(
                     this,
@@ -1277,6 +1287,7 @@ public class DiscoveryClient implements EurekaClient {
                     clientConfig.getInstanceInfoReplicationIntervalSeconds(),
                     2); // burstSize
 
+            // 注册状态变更的监听器
             statusChangeListener = new ApplicationInfoManager.StatusChangeListener() {
                 @Override
                 public String getId() {
