@@ -98,6 +98,8 @@ public class ApplicationsResource {
     }
 
     /**
+     * 接收获取全量注册表的请求
+     *
      * Get information about all {@link com.netflix.discovery.shared.Applications}.
      *
      * @param version the version of the request.
@@ -156,6 +158,7 @@ public class ApplicationsResource {
                     .header(HEADER_CONTENT_TYPE, returnMediaType)
                     .build();
         } else {
+            // 从缓存中获取注册表信息
             response = Response.ok(responseCache.get(cacheKey))
                     .build();
         }
