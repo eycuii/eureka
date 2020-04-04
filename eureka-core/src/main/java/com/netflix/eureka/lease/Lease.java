@@ -72,6 +72,7 @@ public class Lease<T> {
      */
     public void cancel() {
         if (evictionTimestamp <= 0) {
+            // 服务实例下线的时间戳
             evictionTimestamp = System.currentTimeMillis();
         }
     }

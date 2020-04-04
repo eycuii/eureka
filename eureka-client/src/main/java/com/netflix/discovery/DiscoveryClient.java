@@ -884,7 +884,9 @@ public class DiscoveryClient implements EurekaClient {
 
             // If APPINFO was registered
             if (applicationInfoManager != null && clientConfig.shouldRegisterWithEureka()) {
+                // 修改服务实例状态为DOWN
                 applicationInfoManager.setInstanceStatus(InstanceStatus.DOWN);
+                // 取消注册
                 unregister();
             }
 
@@ -900,6 +902,8 @@ public class DiscoveryClient implements EurekaClient {
     }
 
     /**
+     * 取消注册
+     *
      * unregister w/ the eureka service.
      */
     void unregister() {
@@ -907,6 +911,7 @@ public class DiscoveryClient implements EurekaClient {
         if(eurekaTransport != null && eurekaTransport.registrationClient != null) {
             try {
                 logger.info("Unregistering ...");
+                // 发送取消请求
                 EurekaHttpResponse<Void> httpResponse = eurekaTransport.registrationClient.cancel(instanceInfo.getAppName(), instanceInfo.getId());
                 logger.info(PREFIX + appPathIdentifier + " - deregister  status: " + httpResponse.getStatusCode());
             } catch (Exception e) {

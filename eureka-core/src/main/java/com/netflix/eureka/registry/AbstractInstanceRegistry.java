@@ -298,6 +298,8 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
     }
 
     /**
+     * 取消租约
+     *
      * Cancels the registration of an instance.
      *
      * <p>
@@ -328,9 +330,11 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
             Map<String, Lease<InstanceInfo>> gMap = registry.get(appName);
             Lease<InstanceInfo> leaseToCancel = null;
             if (gMap != null) {
+                // 从注册表中去掉该服务实例
                 leaseToCancel = gMap.remove(id);
             }
             synchronized (recentCanceledQueue) {
+                // 放到最近下线的队列中
                 recentCanceledQueue.add(new Pair<Long, String>(System.currentTimeMillis(), appName + "(" + id + ")"));
             }
             InstanceStatus instanceStatus = overriddenInstanceStatusMap.remove(id);
@@ -342,17 +346,20 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                 logger.warn("DS: Registry: cancel failed because Lease is not registered for: {}/{}", appName, id);
                 return false;
             } else {
+                // 取消租约
                 leaseToCancel.cancel();
                 InstanceInfo instanceInfo = leaseToCancel.getHolder();
                 String vip = null;
                 String svip = null;
                 if (instanceInfo != null) {
                     instanceInfo.setActionType(ActionType.DELETED);
+                    // 把服务实例放到最近有变化的队列中
                     recentlyChangedQueue.add(new RecentlyChangedItem(leaseToCancel));
-                    instanceInfo.setLastUpdatedTimestamp();
+                    instanceInfo.setLastUpdatedTimestamp(); // 更新服务实例的lastUpdatedTimestamp，最近一次变更的时间戳
                     vip = instanceInfo.getVIPAddress();
                     svip = instanceInfo.getSecureVipAddress();
                 }
+                // 把这个服务实例的缓存清理掉
                 invalidateCache(appName, vip, svip);
                 logger.info("Cancelled instance {}/{} (replication={})", appName, id, isReplication);
                 return true;
