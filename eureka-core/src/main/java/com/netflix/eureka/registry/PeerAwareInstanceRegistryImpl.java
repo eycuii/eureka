@@ -412,7 +412,9 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
         replicateToPeers(Action.Register, info.getAppName(), info.getId(), info, null, isReplication);
     }
 
-    /*
+    /**
+     * 服务续约
+     *
      * (non-Javadoc)
      *
      * @see com.netflix.eureka.registry.InstanceRegistry#renew(java.lang.String,

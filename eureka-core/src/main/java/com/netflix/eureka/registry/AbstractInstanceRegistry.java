@@ -363,6 +363,8 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
     }
 
     /**
+     * 服务续约
+     *
      * Marks the given instance of the given app name as renewed, and also marks whether it originated from
      * replication.
      *
@@ -404,6 +406,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                 }
             }
             renewsLastMin.increment();
+            // 服务续约
             leaseToRenew.renew();
             return true;
         }

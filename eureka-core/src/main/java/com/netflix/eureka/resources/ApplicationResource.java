@@ -118,6 +118,8 @@ public class ApplicationResource {
     }
 
     /**
+     * 接收心跳请求
+     *
      * Gets information about a particular instance of an application.
      *
      * @param id

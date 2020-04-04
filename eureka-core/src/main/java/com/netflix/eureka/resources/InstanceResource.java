@@ -88,6 +88,8 @@ public class InstanceResource {
     }
 
     /**
+     * 接收心跳请求
+     *
      * A put request for renewing lease from a client instance.
      *
      * @param isReplication
@@ -109,6 +111,7 @@ public class InstanceResource {
             @QueryParam("status") String status,
             @QueryParam("lastDirtyTimestamp") String lastDirtyTimestamp) {
         boolean isFromReplicaNode = "true".equals(isReplication);
+        // 服务续约
         boolean isSuccess = registry.renew(app.getName(), id, isFromReplicaNode);
 
         // Not found in the registry, immediately ask for a register
