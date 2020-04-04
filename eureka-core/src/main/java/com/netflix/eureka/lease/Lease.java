@@ -64,7 +64,9 @@ public class Lease<T> {
     public void renew() {
         // 更新lastUpdateTimestamp时间戳。duration默认为90秒
         lastUpdateTimestamp = System.currentTimeMillis() + duration;
-
+        // 这里本应该直接设置为当前时间，但这里写了bug，就是设置成了当前时间加上duration后的值。
+        // 这个在isExpired(long additionalLeaseMs)方法注释中有相关说明。
+        // 然而注释里说，虽然这是bug，但影响不大，所以不打算修复。
     }
 
     /**
@@ -102,6 +104,8 @@ public class Lease<T> {
     }
 
     /**
+     * 服务实例是否已过期
+     *
      * Checks if the lease of a given {@link com.netflix.appinfo.InstanceInfo} has expired or not.
      *
      * Note that due to renew() doing the 'wrong" thing and setting lastUpdateTimestamp to +duration more than
@@ -112,7 +116,13 @@ public class Lease<T> {
      * @param additionalLeaseMs any additional lease time to add to the lease evaluation in ms.
      */
     public boolean isExpired(long additionalLeaseMs) {
+        // 当前时间 > 上一次心跳时间 + 认为实例宕机的最小间隔时间（90秒） + 补偿时间
+        // 也就是，当前时间是不是已经超过了本该续约（心跳）的时间
         return (evictionTimestamp > 0 || System.currentTimeMillis() > (lastUpdateTimestamp + duration + additionalLeaseMs));
+        // 但由于renew()方法里的bug，导致本应该超过90秒没有心跳时认为实例宕机的，实际上却是2*90=180秒才会认为实例宕机。
+        // 而且，失效多级缓存时，30s才做一次读写缓存同步到只读缓存过程，
+        // 然后服务实例也是30s做一次抓取增量注册表，
+        // 所以，一个服务实例宕机，可能要过几分钟，才能让其他服务感知到。
     }
 
     /**

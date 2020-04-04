@@ -618,6 +618,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
     public void evict(long additionalLeaseMs) {
         logger.debug("Running the evict task");
 
+        // 是否允许主动删除故障的服务实例
         if (!isLeaseExpirationEnabled()) {
             logger.debug("DS: lease expiration is currently disabled.");
             return;
@@ -627,11 +628,13 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
         // if we do not that, we might wipe out whole apps before self preservation kicks in. By randomizing it,
         // the impact should be evenly distributed across all applications.
         List<Lease<InstanceInfo>> expiredLeases = new ArrayList<>();
+        // 遍历注册表中所有实例
         for (Entry<String, Map<String, Lease<InstanceInfo>>> groupEntry : registry.entrySet()) {
             Map<String, Lease<InstanceInfo>> leaseMap = groupEntry.getValue();
             if (leaseMap != null) {
                 for (Entry<String, Lease<InstanceInfo>> leaseEntry : leaseMap.entrySet()) {
                     Lease<InstanceInfo> lease = leaseEntry.getValue();
+                    // 判断服务实例的租约是否已过期
                     if (lease.isExpired(additionalLeaseMs) && lease.getHolder() != null) {
                         expiredLeases.add(lease);
                     }
@@ -641,25 +644,33 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
 
         // To compensate for GC pauses or drifting local time, we need to use current registry size as a base for
         // triggering self-preservation. Without that we would wipe out full registry.
+        // 当前注册表中服务实例数量
         int registrySize = (int) getLocalRegistrySize();
+        // registrySize * 0.85
         int registrySizeThreshold = (int) (registrySize * serverConfig.getRenewalPercentThreshold());
+        // 最多能摘除的服务实例数量
         int evictionLimit = registrySize - registrySizeThreshold;
 
+        // 本次能摘除的服务实例数量
         int toEvict = Math.min(expiredLeases.size(), evictionLimit);
         if (toEvict > 0) {
             logger.info("Evicting {} items (expired={}, evictionLimit={})", toEvict, expiredLeases.size(), evictionLimit);
 
             Random random = new Random(System.currentTimeMillis());
+            // 随机摘除toEvict个服务实例
             for (int i = 0; i < toEvict; i++) {
                 // Pick a random item (Knuth shuffle algorithm)
+                // 从数组里随机挑选多个的算法
                 int next = i + random.nextInt(expiredLeases.size() - i);
                 Collections.swap(expiredLeases, i, next);
+                // 随机挑出服务实例
                 Lease<InstanceInfo> lease = expiredLeases.get(i);
 
                 String appName = lease.getHolder().getAppName();
                 String id = lease.getHolder().getId();
                 EXPIRED.increment();
                 logger.warn("DS: Registry: expired lease for {}/{}", appName, id);
+                // 摘除服务实例
                 internalCancel(appName, id, false);
             }
         }
@@ -1261,8 +1272,9 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
             evictionTaskRef.get().cancel();
         }
         evictionTaskRef.set(new EvictionTask());
+        // 每隔60秒执行一次EvictionTask
         evictionTimer.schedule(evictionTaskRef.get(),
-                serverConfig.getEvictionIntervalTimerInMs(),
+                serverConfig.getEvictionIntervalTimerInMs(), // 60秒
                 serverConfig.getEvictionIntervalTimerInMs());
     }
 
@@ -1288,6 +1300,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
         @Override
         public void run() {
             try {
+                // 计算补偿时间
                 long compensationTimeMs = getCompensationTimeMs();
                 logger.info("Running the evict task with compensationTime {}ms", compensationTimeMs);
                 evict(compensationTimeMs);
@@ -1297,20 +1310,33 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
         }
 
         /**
+         * 计算补偿时间。
+         * 比如任务是60s执行一次，但可能由于jvm gc卡顿，或者os时钟除了问题等，
+         * 原本应该10:00:00执行任务，这次却在10:02:00时才执行了。
+         * 那么应该计算补偿时间，这时补偿时间就是2分钟。
+         * 也就是，补偿时间 = 当前时间 - 本该执行的时间
+         *                 = 当前时间 - ( 上一次执行时间 + 任务执行的间隔 )
+         *
          * compute a compensation time defined as the actual time this task was executed since the prev iteration,
          * vs the configured amount of time for execution. This is useful for cases where changes in time (due to
          * clock skew or gc for example) causes the actual eviction task to execute later than the desired time
          * according to the configured cycle.
          */
         long getCompensationTimeMs() {
+            // 当前时间
             long currNanos = getCurrentTimeNano();
+            // 上一次EvictionTask执行的时间。同时把lastExecutionNanosRef设置为当前时间
             long lastNanos = lastExecutionNanosRef.getAndSet(currNanos);
             if (lastNanos == 0l) {
                 return 0l;
             }
 
+            // 计算时间差 = 当前时间 - 上一次执行时间
             long elapsedMs = TimeUnit.NANOSECONDS.toMillis(currNanos - lastNanos);
+            // 计算补偿时间 = elapsedMs - 任务执行的间隔
+            // serverConfig.getEvictionIntervalTimerInMs()就是60秒
             long compensationTime = elapsedMs - serverConfig.getEvictionIntervalTimerInMs();
+            // 如果compensationTime小于零，表示提前执行了，就不用补偿，直接返回0
             return compensationTime <= 0l ? 0l : compensationTime;
         }
 
