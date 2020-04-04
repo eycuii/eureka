@@ -166,6 +166,8 @@ public class ApplicationsResource {
     }
 
     /**
+     * 接收获取增量注册表的请求
+     *
      * Get information about all delta changes in {@link com.netflix.discovery.shared.Applications}.
      *
      * <p>
@@ -228,7 +230,7 @@ public class ApplicationsResource {
         }
 
         Key cacheKey = new Key(Key.EntityType.Application,
-                ResponseCacheImpl.ALL_APPS_DELTA,
+                ResponseCacheImpl.ALL_APPS_DELTA, // 缓存key
                 keyType, CurrentRequestVersion.get(), EurekaAccept.fromString(eurekaAccept), regions
         );
 
@@ -239,6 +241,7 @@ public class ApplicationsResource {
                     .header(HEADER_CONTENT_TYPE, returnMediaType)
                     .build();
         } else {
+            // 从缓存读取
             return Response.ok(responseCache.get(cacheKey))
                     .build();
         }

@@ -216,6 +216,9 @@ public abstract class AbstractJersey2EurekaHttpClient implements EurekaHttpClien
         return getApplicationsInternal("apps/", regions);
     }
 
+    /**
+     * 发送获取增量注册表的请求
+     */
     @Override
     public EurekaHttpResponse<Applications> getDelta(String... regions) {
         return getApplicationsInternal("apps/delta", regions);
