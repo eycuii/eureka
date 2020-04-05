@@ -120,6 +120,7 @@ class AcceptorExecutor<ID, T> {
     }
 
     void process(ID id, T task, long expiryTime) {
+        // 放到acceptorQueue队列
         acceptorQueue.add(new TaskHolder<ID, T>(id, task, expiryTime));
         acceptedTasks++;
     }
@@ -183,6 +184,7 @@ class AcceptorExecutor<ID, T> {
             long scheduleTime = 0;
             while (!isShutdown.get()) {
                 try {
+                    // 不断从reprocessQueue、acceptorQueue里取出来放到processingOrder
                     drainInputQueues();
 
                     int totalItems = processingOrder.size();
@@ -192,6 +194,7 @@ class AcceptorExecutor<ID, T> {
                         scheduleTime = now + trafficShaper.transmissionDelay();
                     }
                     if (scheduleTime <= now) {
+                        // 默认每隔500ms，将队列里的任务打成一个batch
                         assignBatchWork();
                         assignSingleItemWork();
                     }
@@ -214,6 +217,9 @@ class AcceptorExecutor<ID, T> {
             return pendingTasks.size() >= maxBufferSize;
         }
 
+        /**
+         * 不断从reprocessQueue、acceptorQueue里取出来放到processingOrder
+         */
         private void drainInputQueues() throws InterruptedException {
             do {
                 drainReprocessQueue();
@@ -231,12 +237,18 @@ class AcceptorExecutor<ID, T> {
             } while (!reprocessQueue.isEmpty() || !acceptorQueue.isEmpty() || pendingTasks.isEmpty());
         }
 
+        /**
+         * 不断从acceptorQueue里取出来放到processingOrder
+         */
         private void drainAcceptorQueue() {
             while (!acceptorQueue.isEmpty()) {
                 appendTaskHolder(acceptorQueue.poll());
             }
         }
 
+        /**
+         * 不断从reprocessQueue里取出来放到processingOrder
+         */
         private void drainReprocessQueue() {
             long now = System.currentTimeMillis();
             while (!reprocessQueue.isEmpty() && !isFull()) {
@@ -257,6 +269,9 @@ class AcceptorExecutor<ID, T> {
             }
         }
 
+        /**
+         * 放到processingOrder
+         */
         private void appendTaskHolder(TaskHolder<ID, T> taskHolder) {
             if (isFull()) {
                 pendingTasks.remove(processingOrder.poll());
@@ -292,7 +307,9 @@ class AcceptorExecutor<ID, T> {
             if (hasEnoughTasksForNextBatch()) {
                 if (batchWorkRequests.tryAcquire(1)) {
                     long now = System.currentTimeMillis();
+                    // batch最大为250
                     int len = Math.min(maxBatchingSize, processingOrder.size());
+                    // 一个batch
                     List<TaskHolder<ID, T>> holders = new ArrayList<>(len);
                     while (holders.size() < len && !processingOrder.isEmpty()) {
                         ID id = processingOrder.poll();
@@ -307,6 +324,7 @@ class AcceptorExecutor<ID, T> {
                         batchWorkRequests.release();
                     } else {
                         batchSizeMetric.record(holders.size(), TimeUnit.MILLISECONDS);
+                        // batch放到batchWorkQueue
                         batchWorkQueue.add(holders);
                     }
                 }

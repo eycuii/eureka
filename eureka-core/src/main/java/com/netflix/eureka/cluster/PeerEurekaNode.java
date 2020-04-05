@@ -135,6 +135,7 @@ public class PeerEurekaNode {
         long expiryTime = System.currentTimeMillis() + getLeaseRenewalOf(info);
         batchingDispatcher.process(
                 taskId("register", info),
+                // 把请求封装成一个task后，给batchingDispatcher
                 new InstanceReplicationTask(targetHost, Action.Register, info, null, true) {
                     public EurekaHttpResponse<Void> execute() {
                         // 向eureka server发送注册请求

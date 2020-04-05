@@ -64,6 +64,8 @@ public class PeerReplicationResource {
     }
 
     /**
+     * 接收batch
+     *
      * Process batched replication events from peer eureka nodes.
      *
      * <p>
@@ -82,6 +84,7 @@ public class PeerReplicationResource {
             ReplicationListResponse batchResponse = new ReplicationListResponse();
             for (ReplicationInstance instanceInfo : replicationList.getReplicationList()) {
                 try {
+                    // 分发
                     batchResponse.addResponse(dispatch(instanceInfo));
                 } catch (Exception e) {
                     batchResponse.addResponse(new ReplicationInstanceResponse(Status.INTERNAL_SERVER_ERROR.getStatusCode(), null));
@@ -96,6 +99,9 @@ public class PeerReplicationResource {
         }
     }
 
+    /**
+     * 分发
+     */
     private ReplicationInstanceResponse dispatch(ReplicationInstance instanceInfo) {
         ApplicationResource applicationResource = createApplicationResource(instanceInfo);
         InstanceResource resource = createInstanceResource(instanceInfo, applicationResource);
@@ -135,6 +141,7 @@ public class PeerReplicationResource {
     }
 
     private static Builder handleRegister(ReplicationInstance instanceInfo, ApplicationResource applicationResource) {
+        // 注册服务实例。isReplication为true
         applicationResource.addInstance(instanceInfo.getInstanceInfo(), REPLICATION);
         return new Builder().setStatusCode(Status.OK.getStatusCode());
     }

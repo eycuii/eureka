@@ -107,10 +107,14 @@ public class Jersey2ReplicationClient extends AbstractJersey2EurekaHttpClient im
         }
     }
 
+    /**
+     * 发送batch
+     */
     @Override
     public EurekaHttpResponse<ReplicationListResponse> submitBatchUpdates(ReplicationList replicationList) {
         Response response = null;
         try {
+            // http://localhost:8080/v2/peerapplication/batch
             response = jerseyClient.target(serviceUrl)
                     .path(PeerEurekaNode.BATCH_URL_PATH)
                     .request(MediaType.APPLICATION_JSON_TYPE)
