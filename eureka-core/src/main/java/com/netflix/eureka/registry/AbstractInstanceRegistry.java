@@ -243,6 +243,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                         // Since the client wants to cancel it, reduce the threshold
                         // (1
                         // for 30 seconds, 2 for a minute)
+                        // 每次新增一个实例，每分钟期望心跳次数 + 2
                         this.expectedNumberOfRenewsPerMin = this.expectedNumberOfRenewsPerMin + 2;
                         this.numberOfRenewsPerMinThreshold =
                                 (int) (this.expectedNumberOfRenewsPerMin * serverConfig.getRenewalPercentThreshold());
@@ -412,6 +413,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                     instanceInfo.setStatusWithoutDirty(overriddenInstanceStatus);
                 }
             }
+            // 每次收到心跳/服务续约，就加一。
             renewsLastMin.increment();
             // 服务续约
             leaseToRenew.renew();
@@ -619,6 +621,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
         logger.debug("Running the evict task");
 
         // 是否允许主动删除故障的服务实例
+        // 自我保护机制相关
         if (!isLeaseExpirationEnabled()) {
             logger.debug("DS: lease expiration is currently disabled.");
             return;
@@ -673,6 +676,8 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                 // 摘除服务实例
                 internalCancel(appName, id, false);
             }
+            // 问题：这里摘除服务实例后，应该更新expectedNumberOfRenewsPerMin。
+            // PeerAwareInstanceRegistryImpl.cancel()里有对expectedNumberOfRenewsPerMin减2，但是在定时摘除这里却没有更新
         }
     }
 

@@ -26,6 +26,7 @@
   %>
   <h4 id="uptime">Current time: <%=StatusResource.getCurrentTimeAsString() %>, Uptime: <%=StatusInfo.getUpTime()%></h4>
   <hr id="uptime">Lease expiration enabled: <%=registry.isLeaseExpirationEnabled() %>, Renews threshold: <%=registry.getNumOfRenewsPerMinThreshold() %>, Renews (last min):  <%=registry.getNumOfRenewsInLastMin() %></hr>
+  <%-- 前端控制台上判断是否显示红色自我保护的部分： --%>
   <% if (registry.isBelowRenewThresold() == 1) {
  	  if (!registry.isSelfPreservationModeEnabled()) {
    %>

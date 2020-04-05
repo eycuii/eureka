@@ -48,12 +48,17 @@ public class MeasuredRate {
 
     public synchronized void start() {
         if (!isActive) {
+            // 每分钟执行一次：
             timer.schedule(new TimerTask() {
 
                 @Override
                 public void run() {
                     try {
                         // Zero out the current bucket.
+                        // currentBucket：当前这一分钟的心跳次数
+                        // lastBucket：上一分钟心跳次数
+                        // lastBucket设置为currentBucket
+                        // currentBucket再设置为0
                         lastBucket.set(currentBucket.getAndSet(0));
                     } catch (Throwable e) {
                         logger.error("Cannot reset the Measured Rate", e);
