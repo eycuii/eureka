@@ -137,6 +137,7 @@ public class PeerEurekaNode {
                 taskId("register", info),
                 new InstanceReplicationTask(targetHost, Action.Register, info, null, true) {
                     public EurekaHttpResponse<Void> execute() {
+                        // 向eureka server发送注册请求
                         return replicationClient.register(info);
                     }
                 },

@@ -85,6 +85,7 @@ public class PeerEurekaNodes {
                 }
         );
         try {
+            // 根据url地址构造PeerEurekaNode
             updatePeerEurekaNodes(resolvePeerUrls());
             Runnable peersUpdateTask = new Runnable() {
                 @Override
@@ -99,7 +100,7 @@ public class PeerEurekaNodes {
             };
             taskExecutor.scheduleWithFixedDelay(
                     peersUpdateTask,
-                    serverConfig.getPeerEurekaNodesUpdateIntervalMs(),
+                    serverConfig.getPeerEurekaNodesUpdateIntervalMs(), // 每隔10分钟执行一次
                     serverConfig.getPeerEurekaNodesUpdateIntervalMs(),
                     TimeUnit.MILLISECONDS
             );
@@ -124,6 +125,8 @@ public class PeerEurekaNodes {
     }
 
     /**
+     * 解析配置文件中的其他eureka server的url地址
+     *
      * Resolve peer URLs.
      *
      * @return peer URLs with node's own URL filtered out
@@ -187,6 +190,7 @@ public class PeerEurekaNodes {
         if (!toAdd.isEmpty()) {
             logger.info("Adding new peer nodes {}", toAdd);
             for (String peerUrl : toAdd) {
+                // 基于url地址构造PeerEurekaNode
                 newNodeList.add(createPeerEurekaNode(peerUrl));
             }
         }
